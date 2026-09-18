@@ -1,3 +1,5 @@
+import argparse
+
 from flask import Flask, jsonify, render_template
 
 from map_loader import load_map
@@ -6,6 +8,7 @@ from dijkstra import dijkstra
 
 app = Flask(__name__)
 
+MAP_FILE = None
 
 @app.route("/")
 def index():
@@ -13,7 +16,7 @@ def index():
 
 @app.route("/api/graph")
 def graph_data():
-    nodes, start, goal = load_map()
+    nodes, start, goal = load_map(MAP_FILE)
 
     route, total_cost = dijkstra(
         start=start,
@@ -114,7 +117,29 @@ def graph_data():
     })
 
 if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(
+        description="Dijkstra graph visualizer"
+    )
+
+    parser.add_argument(
+        "map_file",
+        help="Path to the map file"
+    )
+
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Web server port (default: 8000)"
+    )
+
+    args = parser.parse_args()
+
+    MAP_FILE = args.map_file
+
     app.run(
-        debug=True,
-        port=8000
+        host="127.0.0.1",
+        port=args.port,
+        debug=True
     )

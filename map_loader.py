@@ -1,8 +1,6 @@
 from node import Node
 from path_type import PathType
 
-MAP_FILE = "map.txt"
-
 def get_path_type(name):
     """
     Find a PathType by its display name.
@@ -36,7 +34,7 @@ def connect(node1, node2, path_type, cost=None):
     node1.add_path(node2, path_type, cost)
     node2.add_path(node1, path_type, cost)
 
-def load_map():
+def load_map(map_file):
     nodes = {}
 
     start_name = None
@@ -50,7 +48,7 @@ def load_map():
 
         return nodes[name]
 
-    with open(MAP_FILE, "r") as file:
+    with open(map_file, "r") as file:
 
         for line_number, raw_line in enumerate(
             file,
