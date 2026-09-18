@@ -11,7 +11,6 @@ app = Flask(__name__)
 def index():
     return render_template("index.html")
 
-
 @app.route("/api/graph")
 def graph_data():
     nodes, start, goal = load_map()
@@ -35,31 +34,30 @@ def graph_data():
         })
 
     # -----------------------------------
-    # Determine which edges are part of
-    # the shortest route
+    # Exact edges used by shortest route
     # -----------------------------------
 
     route_edges = set()
 
     if route:
         for step in route:
-            key = tuple(sorted([
+
+            endpoints = tuple(sorted([
                 step["from"].name,
                 step["to"].name
             ]))
 
-            route_edges.add(key)
+            route_key = (
+                endpoints[0],
+                endpoints[1],
+                str(step["type"]),
+                step["cost"]
+            )
+
+            route_edges.add(route_key)
 
     # -----------------------------------
     # Links
-    #
-    # Each undirected connection exists
-    # twice internally:
-    #
-    # A -> B
-    # B -> A
-    #
-    # D3 only needs it once.
     # -----------------------------------
 
     graph_links = []
@@ -70,11 +68,20 @@ def graph_data():
         for path in node.possible_paths:
             destination = path["node"]
 
-            edge_key = tuple(sorted([
+            endpoints = tuple(sorted([
                 node.name,
                 destination.name
             ]))
 
+            edge_key = (
+                endpoints[0],
+                endpoints[1],
+                str(path["type"]),
+                path["cost"]
+            )
+
+            # Skip only the reverse copy of the
+            # exact same edge.
             if edge_key in seen:
                 continue
 
@@ -83,7 +90,13 @@ def graph_data():
             graph_links.append({
                 "source": node.name,
                 "target": destination.name,
-                "type": str(path["type"]),
+
+                # User-facing path name
+                "type": path["type"].display_name,
+
+                # Actual CSS/D3 color
+                "color": path["type"].color,
+
                 "cost": path["cost"],
                 "shortest": edge_key in route_edges
             })
@@ -99,7 +112,6 @@ def graph_data():
             else total_cost
         )
     })
-
 
 if __name__ == "__main__":
     app.run(

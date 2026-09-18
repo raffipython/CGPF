@@ -13,7 +13,6 @@ class Node:
                 f"path_type must be a PathType, got {path_type!r}"
             )
 
-        # Use the color's default cost if one wasn't supplied
         if cost is None:
             cost = path_type.cost
 
@@ -22,12 +21,24 @@ class Node:
                 "Dijkstra cannot use negative path costs"
             )
 
-        # A node cannot have two paths with the same color
+        # Only reject an EXACT duplicate:
+        #
+        # same destination
+        # same color
+        # same cost
+        #
+        # Different colors between the same two nodes
+        # are perfectly valid.
         for path in self.possible_paths:
-            if path["type"] == path_type:
+            if (
+                path["node"] is destination
+                and path["type"] == path_type
+                and path["cost"] == cost
+            ):
                 raise ValueError(
-                    f"Node {self.name} already has a "
-                    f"{path_type} path"
+                    f"Duplicate path: "
+                    f"{self.name} -> {destination.name} "
+                    f"{path_type} ({cost})"
                 )
 
         self.possible_paths.append({

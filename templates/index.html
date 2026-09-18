@@ -9,93 +9,372 @@
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>Dijkstra Graph</title>
+    <title>Cyber Graph Path Finder</title>
 
+    <!-- Local D3 -->
     <script src="/static/d3.min.js"></script>
-    
+
     <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-mid: #172554;
+            --panel: rgba(255, 255, 255, 0.10);
+            --panel-strong: rgba(255, 255, 255, 0.15);
+            --border: rgba(255, 255, 255, 0.18);
+
+            --text: #f8fafc;
+            --muted: #cbd5e1;
+
+            --graph-bg: rgba(248, 250, 252, 0.96);
+
+            --start: #22c55e;
+            --goal: #ef4444;
+            --accent: #38bdf8;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
         body {
             margin: 0;
-            font-family: system-ui, sans-serif;
-            background: #f4f4f4;
+            min-height: 100%;
         }
 
-        header {
-            padding: 16px 24px;
-            background: white;
-            border-bottom: 1px solid #ddd;
+        body {
+            font-family:
+                Inter,
+                ui-sans-serif,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+
+            color: var(--text);
+
+            background:
+                radial-gradient(
+                    circle at 15% 15%,
+                    rgba(56, 189, 248, 0.30),
+                    transparent 35%
+                ),
+                radial-gradient(
+                    circle at 85% 20%,
+                    rgba(168, 85, 247, 0.28),
+                    transparent 35%
+                ),
+                radial-gradient(
+                    circle at 50% 100%,
+                    rgba(14, 165, 233, 0.20),
+                    transparent 40%
+                ),
+                linear-gradient(
+                    135deg,
+                    #0f172a,
+                    #172554 55%,
+                    #1e1b4b
+                );
+
+            background-attachment: fixed;
         }
 
-        header h1 {
-            margin: 0 0 6px 0;
+        .page {
+            width: min(1500px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 28px 0 32px;
+        }
+
+
+        /* ------------------------------------------------
+           Header
+        ------------------------------------------------ */
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 24px;
+
+            margin-bottom: 20px;
+        }
+
+        .title-area {
+            min-width: 0;
+        }
+
+        .eyebrow {
+            margin-bottom: 7px;
+
+            color: #7dd3fc;
+
+            font-size: 12px;
+            font-weight: 700;
+
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            margin: 0;
+
+            font-size: clamp(28px, 4vw, 44px);
+            line-height: 1.05;
+            letter-spacing: -0.035em;
+        }
+
+        .subtitle {
+            margin: 9px 0 0;
+
+            color: var(--muted);
+
+            font-size: 15px;
+        }
+
+
+        /* ------------------------------------------------
+           Status card
+        ------------------------------------------------ */
+
+        .status-card {
+            flex-shrink: 0;
+
+            min-width: 245px;
+
+            padding: 15px 18px;
+
+            background: var(--panel);
+
+            border: 1px solid var(--border);
+            border-radius: 16px;
+
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+
+            box-shadow:
+                0 20px 50px rgba(0, 0, 0, 0.18);
+        }
+
+        .status-title {
+            margin-bottom: 5px;
+
+            color: var(--muted);
+
+            font-size: 11px;
+            font-weight: 700;
+
+            letter-spacing: 0.10em;
+            text-transform: uppercase;
         }
 
         #info {
-            color: #555;
+            font-size: 15px;
+            font-weight: 600;
         }
 
+
+        /* ------------------------------------------------
+           Main graph panel
+        ------------------------------------------------ */
+
+        .graph-card {
+            overflow: hidden;
+
+            background: var(--panel);
+
+            border: 1px solid var(--border);
+            border-radius: 24px;
+
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+
+            box-shadow:
+                0 30px 70px rgba(0, 0, 0, 0.25);
+        }
+
+        .graph-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+
+            gap: 16px;
+
+            padding: 14px 18px;
+
+            border-bottom: 1px solid var(--border);
+        }
+
+        .graph-toolbar-title {
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .graph-toolbar-hint {
+            color: var(--muted);
+
+            font-size: 12px;
+        }
+
+
+        /* ------------------------------------------------
+           Legend
+        ------------------------------------------------ */
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+
+            align-items: center;
+
+            gap: 14px;
+
+            padding: 12px 18px;
+
+            background: rgba(15, 23, 42, 0.28);
+
+            border-bottom: 1px solid var(--border);
+
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .legend-dot {
+            width: 11px;
+            height: 11px;
+
+            border-radius: 50%;
+
+            background: white;
+        }
+
+        .legend-dot.start {
+            border: 3px solid var(--start);
+        }
+
+        .legend-dot.goal {
+            border: 3px solid var(--goal);
+        }
+
+        .legend-line {
+            width: 24px;
+            height: 0;
+
+            border-top: 5px solid #475569;
+            border-radius: 999px;
+        }
+
+
+        /* ------------------------------------------------
+           Graph
+        ------------------------------------------------ */
+
         #graph-container {
+            position: relative;
+
             width: 100%;
-            height: calc(100vh - 90px);
-            min-height: 600px;
+            height: 720px;
+            min-height: 560px;
+
+            overflow: hidden;
+
+            background-color: var(--graph-bg);
+
+            background-image:
+                linear-gradient(
+                    rgba(100, 116, 139, 0.08) 1px,
+                    transparent 1px
+                ),
+                linear-gradient(
+                    90deg,
+                    rgba(100, 116, 139, 0.08) 1px,
+                    transparent 1px
+                );
+
+            background-size: 30px 30px;
         }
 
         svg {
+            display: block;
+
             width: 100%;
             height: 100%;
-            display: block;
-            background: #fafafa;
         }
 
-        /*
-         * Dark outline underneath paths.
-         *
-         * This helps make light colors such as
-         * Yellow or White visible.
-         */
+
+        /* ------------------------------------------------
+           Graph links
+        ------------------------------------------------ */
+
         .link-outline {
-            stroke: #555;
-            stroke-width: 7px;
-            opacity: 0.20;
+            stroke: #475569;
+
+            stroke-width: 8px;
+
+            opacity: 0.17;
         }
 
-        /*
-         * Normal graph edges
-         */
         .link {
             stroke-width: 4px;
-            opacity: 0.85;
+
+            opacity: 0.82;
+
+            stroke-linecap: round;
+
+            transition:
+                stroke-width 0.2s ease,
+                opacity 0.2s ease;
         }
 
-        /*
-         * Dijkstra shortest-path edges
-         */
         .link.shortest {
             stroke-width: 8px;
+
             opacity: 1;
+
+            filter:
+                drop-shadow(
+                    0 0 4px rgba(15, 23, 42, 0.25)
+                );
         }
 
-        /*
-         * Labels shown on edges:
-         *
-         * Blue (11)
-         */
+
+        /* ------------------------------------------------
+           Edge labels
+        ------------------------------------------------ */
+
         .edge-label {
-            font-size: 13px;
-            font-weight: 600;
+            font-size: 12px;
+            font-weight: 700;
+
+            fill: #334155;
+
             pointer-events: none;
 
             paint-order: stroke;
-            stroke: white;
-            stroke-width: 5px;
+
+            stroke: rgba(248, 250, 252, 0.96);
+            stroke-width: 6px;
             stroke-linejoin: round;
         }
 
-        /*
-         * Nodes
-         */
+
+        /* ------------------------------------------------
+           Nodes
+        ------------------------------------------------ */
+
         .node {
             cursor: grab;
+
+            filter:
+                drop-shadow(
+                    0 5px 6px rgba(15, 23, 42, 0.22)
+                );
         }
 
         .node:active {
@@ -103,34 +382,94 @@
         }
 
         .node circle {
-            fill: white;
-            stroke: #333;
+            fill: #ffffff;
+
+            stroke: #334155;
+
             stroke-width: 3px;
+
+            transition:
+                r 0.15s ease,
+                stroke-width 0.15s ease,
+                fill 0.15s ease;
         }
 
-        /*
-         * Start node
-         */
+        .node:hover circle {
+            fill: #f0f9ff;
+
+            stroke-width: 4px;
+        }
+
         .node.start circle {
-            stroke: green;
+            fill: var(--start);
+            stroke: var(--start);
             stroke-width: 6px;
         }
 
-        /*
-         * Goal node
-         */
         .node.goal circle {
-            stroke: crimson;
+            fill: var(--goal);
+            stroke: var(--goal);
             stroke-width: 6px;
         }
 
         .node text {
+            fill: #0f172a;
+
             font-size: 16px;
-            font-weight: bold;
+            font-weight: 800;
+
             pointer-events: none;
 
             text-anchor: middle;
             dominant-baseline: central;
+        }
+
+
+        /* ------------------------------------------------
+           Footer note
+        ------------------------------------------------ */
+
+        .footer-note {
+            margin-top: 14px;
+
+            color: rgba(226, 232, 240, 0.72);
+
+            text-align: center;
+
+            font-size: 12px;
+        }
+
+
+        /* ------------------------------------------------
+           Responsive
+        ------------------------------------------------ */
+
+        @media (max-width: 760px) {
+
+            .page {
+                width: min(100% - 18px, 1500px);
+                padding-top: 18px;
+            }
+
+            .topbar {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .status-card {
+                width: 100%;
+            }
+
+            .graph-toolbar {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            #graph-container {
+                height: 620px;
+            }
+
         }
     </style>
 </head>
@@ -138,20 +477,95 @@
 
 <body>
 
-<header>
+<div class="page">
 
-    <h1>Dijkstra Graph</h1>
+    <!-- ---------------------------------------------
+         Header
+    ---------------------------------------------- -->
 
-    <div id="info">
-        Loading map...
+    <div class="topbar">
+
+        <div class="title-area">
+
+            <div class="eyebrow">
+                Graph Explorer
+            </div>
+
+            <h1>
+                Cyber Graph Path Finder
+            </h1>
+
+            <p class="subtitle">
+                Interactive weighted graph visualization and shortest-path explorer
+            </p>
+
+        </div>
+
+
+        <div class="status-card">
+
+            <div class="status-title">
+                Current Route
+            </div>
+
+            <div id="info">
+                Loading map...
+            </div>
+
+        </div>
+
     </div>
 
-</header>
+
+    <!-- ---------------------------------------------
+         Graph card
+    ---------------------------------------------- -->
+
+    <div class="graph-card">
+
+        <div class="graph-toolbar">
+
+            <div class="graph-toolbar-title">
+                Interactive Map
+            </div>
+
+            <div class="graph-toolbar-hint">
+                Drag nodes • Scroll to zoom • Drag background to pan • Double-click a node to release it
+            </div>
+
+        </div>
 
 
-<div id="graph-container">
+        <div class="legend">
 
-    <svg id="graph"></svg>
+            <div class="legend-item">
+                <span class="legend-dot start"></span>
+                Start node
+            </div>
+
+            <div class="legend-item">
+                <span class="legend-dot goal"></span>
+                Goal node
+            </div>
+
+            <div class="legend-item">
+                <span class="legend-line"></span>
+                Shortest route uses thicker edges
+            </div>
+
+        </div>
+
+
+        <div id="graph-container">
+            <svg id="graph"></svg>
+        </div>
+
+    </div>
+
+
+    <div class="footer-note">
+        Graph data loaded from map.txt
+    </div>
 
 </div>
 
@@ -160,18 +574,21 @@
 
 /*
  * --------------------------------------------------
- * Load graph data from Flask
+ * Load graph data
  * --------------------------------------------------
  */
 
 async function loadGraph() {
 
-    const response = await fetch("/api/graph");
+    const response =
+        await fetch("/api/graph");
 
     if (!response.ok) {
+
         throw new Error(
             `Unable to load graph: ${response.status}`
         );
+
     }
 
     return response.json();
@@ -180,88 +597,57 @@ async function loadGraph() {
 
 /*
  * --------------------------------------------------
- * Default Graph Layout
- * --------------------------------------------------
- *
- * Coordinates are percentages of the available
- * graph area.
- *
- * That means:
- *
- *     0.50, 0.50
- *
- * means:
- *
- *     50% across
- *     50% down
- *
- * M is placed in the center.
- *
- * This roughly matches the graph image we started
- * with.
+ * Default layout
  * --------------------------------------------------
  */
 
-function applyDefaultLayout(nodes, width, height) {
+function applyDefaultLayout(
+    nodes,
+    width,
+    height
+) {
 
-    const defaultPositions = {
+    const positions = {
 
-        /*
-         * Top
-         */
         A: [0.25, 0.15],
         B: [0.50, 0.10],
         C: [0.75, 0.15],
 
-        /*
-         * Left side
-         */
         D: [0.12, 0.35],
         F: [0.25, 0.48],
         E: [0.10, 0.70],
 
-        /*
-         * Center
-         */
         M: [0.50, 0.50],
 
-        /*
-         * Right side
-         */
         G: [0.75, 0.35],
         I: [0.88, 0.50],
         H: [0.88, 0.70],
 
-        /*
-         * Bottom
-         */
         J: [0.25, 0.85],
         L: [0.50, 0.90],
         K: [0.75, 0.85]
+
     };
 
 
     nodes.forEach(node => {
 
         const position =
-            defaultPositions[node.id];
+            positions[node.id];
 
-        /*
-         * If a future map contains a node that
-         * isn't listed above, give D3 a reasonable
-         * starting point near the center.
-         */
+
         if (!position) {
 
             node.x =
                 width / 2 +
-                (Math.random() - 0.5) * 100;
+                (Math.random() - 0.5) * 120;
 
             node.y =
                 height / 2 +
-                (Math.random() - 0.5) * 100;
+                (Math.random() - 0.5) * 120;
 
             return;
+
         }
 
 
@@ -279,30 +665,256 @@ function applyDefaultLayout(nodes, width, height) {
 
 
         /*
-         * fx and fy tell D3 that the node is
-         * initially pinned at this location.
+         * Pin nodes in their initial locations.
          */
         node.fx = node.x;
         node.fy = node.y;
+
+    });
+
+}
+
+function assignParallelEdges(links) {
+
+    const groups = new Map();
+
+    /*
+     * Group edges by their two endpoints.
+     *
+     * M -> I
+     * I -> M
+     *
+     * are treated as the same pair.
+     */
+    links.forEach(link => {
+
+        const key = [
+            link.source,
+            link.target
+        ]
+            .sort()
+            .join("::");
+
+        if (!groups.has(key)) {
+            groups.set(key, []);
+        }
+
+        groups.get(key).push(link);
+    });
+
+
+    /*
+     * Give parallel edges centered offsets.
+     *
+     * 1 edge:
+     *      0
+     *
+     * 2 edges:
+     *     -0.5, +0.5
+     *
+     * 3 edges:
+     *     -1, 0, +1
+     *
+     * 4 edges:
+     *     -1.5, -0.5, +0.5, +1.5
+     */
+    groups.forEach(group => {
+
+        const count = group.length;
+
+        group.forEach((link, index) => {
+
+            link.parallelIndex =
+                index - (count - 1) / 2;
+
+            link.parallelCount = count;
+
+        });
+
     });
 }
 
+function linkPath(d) {
+
+    const x1 = d.source.x;
+    const y1 = d.source.y;
+
+    const x2 = d.target.x;
+    const y2 = d.target.y;
+
+    /*
+     * If this is the only connection between
+     * these nodes, draw a straight line.
+     */
+    if (
+        !d.parallelCount ||
+        d.parallelCount === 1
+    ) {
+
+        return (
+            `M ${x1} ${y1} ` +
+            `L ${x2} ${y2}`
+        );
+    }
+
+
+    /*
+     * Midpoint between the nodes
+     */
+    const midX =
+        (x1 + x2) / 2;
+
+    const midY =
+        (y1 + y2) / 2;
+
+
+    /*
+     * Direction between nodes
+     */
+    const dx =
+        x2 - x1;
+
+    const dy =
+        y2 - y1;
+
+    const distance =
+        Math.sqrt(
+            dx * dx +
+            dy * dy
+        );
+
+
+    if (distance === 0) {
+        return "";
+    }
+
+
+    /*
+     * Perpendicular direction
+     */
+    const perpendicularX =
+        -dy / distance;
+
+    const perpendicularY =
+        dx / distance;
+
+
+    /*
+     * How far apart parallel paths should be.
+     *
+     * Increase this if you want more separation.
+     */
+    const curveSpacing = 55;
+
+    const offset =
+        d.parallelIndex *
+        curveSpacing;
+
+
+    /*
+     * Quadratic Bézier control point
+     */
+    const controlX =
+        midX +
+        perpendicularX *
+        offset;
+
+    const controlY =
+        midY +
+        perpendicularY *
+        offset;
+
+
+    return (
+        `M ${x1} ${y1} ` +
+        `Q ${controlX} ${controlY} ` +
+        `${x2} ${y2}`
+    );
+}
+
+function linkLabelPosition(d) {
+
+    const x1 = d.source.x;
+    const y1 = d.source.y;
+
+    const x2 = d.target.x;
+    const y2 = d.target.y;
+
+    const midX =
+        (x1 + x2) / 2;
+
+    const midY =
+        (y1 + y2) / 2;
+
+    if (
+        !d.parallelCount ||
+        d.parallelCount === 1
+    ) {
+        return {
+            x: midX,
+            y: midY
+        };
+    }
+
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+
+    const distance =
+        Math.sqrt(
+            dx * dx +
+            dy * dy
+        );
+
+    if (distance === 0) {
+        return {
+            x: midX,
+            y: midY
+        };
+    }
+
+    const perpendicularX =
+        -dy / distance;
+
+    const perpendicularY =
+        dx / distance;
+
+    const curveSpacing = 55;
+
+    const offset =
+        d.parallelIndex *
+        curveSpacing *
+        0.55;
+
+    return {
+        x:
+            midX +
+            perpendicularX *
+            offset,
+
+        y:
+            midY +
+            perpendicularY *
+            offset
+    };
+}
 
 /*
  * --------------------------------------------------
- * Draw the graph
+ * Draw graph
  * --------------------------------------------------
  */
 
 async function drawGraph() {
 
-    const data = await loadGraph();
-
+    const data =
+        await loadGraph();
+    
+    assignParallelEdges(
+        data.links
+    );
 
     /*
-     * ----------------------------------------------
-     * Header information
-     * ----------------------------------------------
+     * Header status
      */
 
     const info =
@@ -312,21 +924,19 @@ async function drawGraph() {
     if (data.total_cost === null) {
 
         info.textContent =
-            `${data.start} → ${data.goal}: No route found`;
+            `${data.start} → ${data.goal} · No route found`;
 
     }
     else {
 
         info.textContent =
-            `${data.start} → ${data.goal} | ` +
-            `Shortest cost: ${data.total_cost}`;
+            `${data.start} → ${data.goal} · Cost ${data.total_cost}`;
+
     }
 
 
     /*
-     * ----------------------------------------------
-     * SVG dimensions
-     * ----------------------------------------------
+     * Dimensions
      */
 
     const container =
@@ -343,6 +953,10 @@ async function drawGraph() {
         container.clientHeight;
 
 
+    /*
+     * SVG
+     */
+
     const svg =
         d3.select("#graph");
 
@@ -354,9 +968,7 @@ async function drawGraph() {
 
 
     /*
-     * ----------------------------------------------
-     * Apply our initial layout
-     * ----------------------------------------------
+     * Initial node positions
      */
 
     applyDefaultLayout(
@@ -367,11 +979,7 @@ async function drawGraph() {
 
 
     /*
-     * ----------------------------------------------
-     * Everything is placed in a viewport group.
-     *
-     * Zooming/panning moves this entire group.
-     * ----------------------------------------------
+     * Main viewport
      */
 
     const viewport =
@@ -379,9 +987,7 @@ async function drawGraph() {
 
 
     /*
-     * ----------------------------------------------
-     * Zoom and pan
-     * ----------------------------------------------
+     * Zoom / pan
      */
 
     const zoom =
@@ -409,26 +1015,25 @@ async function drawGraph() {
 
 
     /*
-     * ----------------------------------------------
-     * D3 Force Simulation
-     * ----------------------------------------------
-     *
-     * Since our nodes currently have fx/fy values,
-     * they remain pinned at their default locations.
-     *
-     * If a node is double-clicked, fx/fy are removed
-     * and the forces take over.
-     * ----------------------------------------------
+     * ------------------------------------------------
+     * Simulation
+     * ------------------------------------------------
      */
 
     const simulation =
-        d3.forceSimulation(data.nodes)
+        d3.forceSimulation(
+            data.nodes
+        )
 
             .force(
                 "link",
 
-                d3.forceLink(data.links)
-                    .id(d => d.id)
+                d3.forceLink(
+                    data.links
+                )
+                    .id(
+                        d => d.id
+                    )
                     .distance(150)
                     .strength(0.7)
             )
@@ -453,25 +1058,27 @@ async function drawGraph() {
                 "collision",
 
                 d3.forceCollide()
-                    .radius(45)
+                    .radius(48)
             );
 
 
     /*
-     * ----------------------------------------------
+     * ------------------------------------------------
      * Link outlines
-     * ----------------------------------------------
+     * ------------------------------------------------
      */
 
     const linkOutline =
         viewport
             .append("g")
 
-            .selectAll("line")
+            .selectAll("path")
 
-            .data(data.links)
+            .data(
+                data.links
+            )
 
-            .join("line")
+            .join("path")
 
             .attr(
                 "class",
@@ -480,44 +1087,42 @@ async function drawGraph() {
 
 
     /*
-     * ----------------------------------------------
-     * Actual colored links
-     * ----------------------------------------------
+     * ------------------------------------------------
+     * Colored links
+     * ------------------------------------------------
      */
 
     const links =
-        viewport
-            .append("g")
+    viewport
+        .append("g")
+        .selectAll("path")
+        .data(data.links)
+        .join("path")
 
-            .selectAll("line")
+        .attr(
+            "fill",
+            "none"
+        )
 
-            .data(data.links)
+        .attr(
+            "class",
+            d =>
+                d.shortest
+                    ? "link shortest"
+                    : "link"
+        )
 
-            .join("line")
-
-            .attr(
-                "class",
-                d =>
-                    d.shortest
-                        ? "link shortest"
-                        : "link"
-            )
-
-            .attr(
-                "stroke",
-                d => d.type.toLowerCase()
-            );
+        .attr(
+            "stroke",
+            d =>
+                d.color
+        );
 
 
     /*
-     * ----------------------------------------------
-     * Edge Labels
-     * ----------------------------------------------
-     *
-     * Example:
-     *
-     *     Blue (11)
-     * ----------------------------------------------
+     * ------------------------------------------------
+     * Edge labels
+     * ------------------------------------------------
      */
 
     const edgeLabels =
@@ -526,7 +1131,9 @@ async function drawGraph() {
 
             .selectAll("text")
 
-            .data(data.links)
+            .data(
+                data.links
+            )
 
             .join("text")
 
@@ -547,9 +1154,9 @@ async function drawGraph() {
 
 
     /*
-     * ----------------------------------------------
+     * ------------------------------------------------
      * Nodes
-     * ----------------------------------------------
+     * ------------------------------------------------
      */
 
     const node =
@@ -558,7 +1165,9 @@ async function drawGraph() {
 
             .selectAll("g")
 
-            .data(data.nodes)
+            .data(
+                data.nodes
+            )
 
             .join("g")
 
@@ -569,33 +1178,28 @@ async function drawGraph() {
                     let classes =
                         "node";
 
+
                     if (d.start) {
                         classes += " start";
                     }
 
+
                     if (d.goal) {
                         classes += " goal";
                     }
+
 
                     return classes;
                 }
             );
 
 
-    /*
-     * Node circles
-     */
-
     node.append("circle")
         .attr(
             "r",
-            24
+            25
         );
 
-
-    /*
-     * Node letters
-     */
 
     node.append("text")
         .text(
@@ -604,9 +1208,9 @@ async function drawGraph() {
 
 
     /*
-     * ----------------------------------------------
+     * ------------------------------------------------
      * Dragging
-     * ----------------------------------------------
+     * ------------------------------------------------
      */
 
     node.call(
@@ -627,16 +1231,17 @@ async function drawGraph() {
                 "end",
                 dragEnded
             )
+
     );
 
 
-    /*
-     * User starts dragging a node
-     */
+    function dragStarted(
+        event,
+        d
+    ) {
 
-    function dragStarted(event, d) {
-
-        event.sourceEvent.stopPropagation();
+        event.sourceEvent
+            .stopPropagation();
 
 
         if (!event.active) {
@@ -648,31 +1253,30 @@ async function drawGraph() {
         }
 
 
-        /*
-         * Pin node at its current location.
-         */
-
         d.fx = d.x;
         d.fy = d.y;
+
     }
 
 
-    /*
-     * User moves node
-     */
+    function dragged(
+        event,
+        d
+    ) {
 
-    function dragged(event, d) {
+        d.fx =
+            event.x;
 
-        d.fx = event.x;
-        d.fy = event.y;
+        d.fy =
+            event.y;
+
     }
 
 
-    /*
-     * User releases node
-     */
-
-    function dragEnded(event, d) {
+    function dragEnded(
+        event,
+        d
+    ) {
 
         if (!event.active) {
 
@@ -681,30 +1285,26 @@ async function drawGraph() {
 
         }
 
-
         /*
-         * DO NOT clear fx/fy.
-         *
-         * This means the node stays wherever
-         * the user dropped it.
+         * Node stays pinned where dropped.
          */
 
     }
 
 
     /*
-     * ----------------------------------------------
-     * Double-click a node to unpin it
-     * ----------------------------------------------
-     *
-     * It will then become controlled by the
-     * force simulation.
-     * ----------------------------------------------
+     * ------------------------------------------------
+     * Double-click node to release
+     * ------------------------------------------------
      */
 
     node.on(
         "dblclick",
-        function(event, d) {
+
+        function(
+            event,
+            d
+        ) {
 
             event.stopPropagation();
 
@@ -722,9 +1322,9 @@ async function drawGraph() {
 
 
     /*
-     * ----------------------------------------------
-     * Simulation update
-     * ----------------------------------------------
+     * ------------------------------------------------
+     * Simulation tick
+     * ------------------------------------------------
      */
 
     simulation.on(
@@ -733,87 +1333,45 @@ async function drawGraph() {
 
 
             /*
-             * Link outlines
+             * Outline positions
              */
 
-            linkOutline
-
-                .attr(
-                    "x1",
-                    d => d.source.x
-                )
-
-                .attr(
-                    "y1",
-                    d => d.source.y
-                )
-
-                .attr(
-                    "x2",
-                    d => d.target.x
-                )
-
-                .attr(
-                    "y2",
-                    d => d.target.y
-                );
+            linkOutline.attr(
+                "d",
+                linkPath
+            );
 
 
             /*
-             * Colored links
+             * Link positions
              */
 
-            links
-
-                .attr(
-                    "x1",
-                    d => d.source.x
-                )
-
-                .attr(
-                    "y1",
-                    d => d.source.y
-                )
-
-                .attr(
-                    "x2",
-                    d => d.target.x
-                )
-
-                .attr(
-                    "y2",
-                    d => d.target.y
-                );
+            links.attr(
+                "d",
+                linkPath
+            );
 
 
             /*
-             * Put edge labels halfway between
-             * their two nodes.
+             * Edge label positions
              */
 
             edgeLabels
-
                 .attr(
                     "x",
                     d =>
-                        (
-                            d.source.x +
-                            d.target.x
-                        ) / 2
+                        linkLabelPosition(d).x
                 )
 
                 .attr(
                     "y",
                     d =>
-                        (
-                            d.source.y +
-                            d.target.y
-                        ) / 2
+                        linkLabelPosition(d).y
                 );
 
 
             /*
-             * Move nodes
+             * Node positions
              */
 
             node.attr(
@@ -828,27 +1386,33 @@ async function drawGraph() {
 }
 
 
+
 /*
  * --------------------------------------------------
- * Start application
+ * Start
  * --------------------------------------------------
  */
 
-drawGraph().catch(error => {
+drawGraph()
+    .catch(
+        error => {
 
-    console.error(error);
+            console.error(
+                error
+            );
 
 
-    document.getElementById(
-        "info"
-    ).textContent =
-        error.message;
+            document
+                .getElementById(
+                    "info"
+                )
+                .textContent =
+                    error.message;
 
-});
+        }
+    );
 
 </script>
 
-
 </body>
-
 </html>
