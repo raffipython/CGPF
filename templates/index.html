@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Dijkstra Graph</title>
+
+    <script src="/static/d3.min.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            font-family: system-ui, sans-serif;
+            background: #f4f4f4;
+        }
+
+        header {
+            padding: 16px 24px;
+            background: white;
+            border-bottom: 1px solid #ddd;
+        }
+
+        header h1 {
+            margin: 0 0 6px 0;
+        }
+
+        #info {
+            color: #555;
+        }
+
+        #graph-container {
+            width: 100%;
+            height: calc(100vh - 90px);
+            min-height: 600px;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: #fafafa;
+        }
+
+        /*
+         * Dark outline underneath paths.
+         *
+         * This helps make light colors such as
+         * Yellow or White visible.
+         */
+        .link-outline {
+            stroke: #555;
+            stroke-width: 7px;
+            opacity: 0.20;
+        }
+
+        /*
+         * Normal graph edges
+         */
+        .link {
+            stroke-width: 4px;
+            opacity: 0.85;
+        }
+
+        /*
+         * Dijkstra shortest-path edges
+         */
+        .link.shortest {
+            stroke-width: 8px;
+            opacity: 1;
+        }
+
+        /*
+         * Labels shown on edges:
+         *
+         * Blue (11)
+         */
+        .edge-label {
+            font-size: 13px;
+            font-weight: 600;
+            pointer-events: none;
+
+            paint-order: stroke;
+            stroke: white;
+            stroke-width: 5px;
+            stroke-linejoin: round;
+        }
+
+        /*
+         * Nodes
+         */
+        .node {
+            cursor: grab;
+        }
+
+        .node:active {
+            cursor: grabbing;
+        }
+
+        .node circle {
+            fill: white;
+            stroke: #333;
+            stroke-width: 3px;
+        }
+
+        /*
+         * Start node
+         */
+        .node.start circle {
+            stroke: green;
+            stroke-width: 6px;
+        }
+
+        /*
+         * Goal node
+         */
+        .node.goal circle {
+            stroke: crimson;
+            stroke-width: 6px;
+        }
+
+        .node text {
+            font-size: 16px;
+            font-weight: bold;
+            pointer-events: none;
+
+            text-anchor: middle;
+            dominant-baseline: central;
+        }
+    </style>
+</head>
+
+
+<body>
+
+<header>
+
+    <h1>Dijkstra Graph</h1>
+
+    <div id="info">
+        Loading map...
+    </div>
+
+</header>
+
+
+<div id="graph-container">
+
+    <svg id="graph"></svg>
+
+</div>
+
+
+<script>
+
+/*
+ * --------------------------------------------------
+ * Load graph data from Flask
+ * --------------------------------------------------
+ */
+
+async function loadGraph() {
+
+    const response = await fetch("/api/graph");
+
+    if (!response.ok) {
+        throw new Error(
+            `Unable to load graph: ${response.status}`
+        );
+    }
+
+    return response.json();
+}
+
+
+/*
+ * --------------------------------------------------
+ * Default Graph Layout
+ * --------------------------------------------------
+ *
+ * Coordinates are percentages of the available
+ * graph area.
+ *
+ * That means:
+ *
+ *     0.50, 0.50
+ *
+ * means:
+ *
+ *     50% across
+ *     50% down
+ *
+ * M is placed in the center.
+ *
+ * This roughly matches the graph image we started
+ * with.
+ * --------------------------------------------------
+ */
+
+function applyDefaultLayout(nodes, width, height) {
+
+    const defaultPositions = {
+
+        /*
+         * Top
+         */
+        A: [0.25, 0.15],
+        B: [0.50, 0.10],
+        C: [0.75, 0.15],
+
+        /*
+         * Left side
+         */
+        D: [0.12, 0.35],
+        F: [0.25, 0.48],
+        E: [0.10, 0.70],
+
+        /*
+         * Center
+         */
+        M: [0.50, 0.50],
+
+        /*
+         * Right side
+         */
+        G: [0.75, 0.35],
+        I: [0.88, 0.50],
+        H: [0.88, 0.70],
+
+        /*
+         * Bottom
+         */
+        J: [0.25, 0.85],
+        L: [0.50, 0.90],
+        K: [0.75, 0.85]
+    };
+
+
+    nodes.forEach(node => {
+
+        const position =
+            defaultPositions[node.id];
+
+        /*
+         * If a future map contains a node that
+         * isn't listed above, give D3 a reasonable
+         * starting point near the center.
+         */
+        if (!position) {
+
+            node.x =
+                width / 2 +
+                (Math.random() - 0.5) * 100;
+
+            node.y =
+                height / 2 +
+                (Math.random() - 0.5) * 100;
+
+            return;
+        }
+
+
+        const [
+            xPercent,
+            yPercent
+        ] = position;
+
+
+        node.x =
+            width * xPercent;
+
+        node.y =
+            height * yPercent;
+
+
+        /*
+         * fx and fy tell D3 that the node is
+         * initially pinned at this location.
+         */
+        node.fx = node.x;
+        node.fy = node.y;
+    });
+}
+
+
+/*
+ * --------------------------------------------------
+ * Draw the graph
+ * --------------------------------------------------
+ */
+
+async function drawGraph() {
+
+    const data = await loadGraph();
+
+
+    /*
+     * ----------------------------------------------
+     * Header information
+     * ----------------------------------------------
+     */
+
+    const info =
+        document.getElementById("info");
+
+
+    if (data.total_cost === null) {
+
+        info.textContent =
+            `${data.start} → ${data.goal}: No route found`;
+
+    }
+    else {
+
+        info.textContent =
+            `${data.start} → ${data.goal} | ` +
+            `Shortest cost: ${data.total_cost}`;
+    }
+
+
+    /*
+     * ----------------------------------------------
+     * SVG dimensions
+     * ----------------------------------------------
+     */
+
+    const container =
+        document.getElementById(
+            "graph-container"
+        );
+
+
+    const width =
+        container.clientWidth;
+
+
+    const height =
+        container.clientHeight;
+
+
+    const svg =
+        d3.select("#graph");
+
+
+    svg.attr(
+        "viewBox",
+        `0 0 ${width} ${height}`
+    );
+
+
+    /*
+     * ----------------------------------------------
+     * Apply our initial layout
+     * ----------------------------------------------
+     */
+
+    applyDefaultLayout(
+        data.nodes,
+        width,
+        height
+    );
+
+
+    /*
+     * ----------------------------------------------
+     * Everything is placed in a viewport group.
+     *
+     * Zooming/panning moves this entire group.
+     * ----------------------------------------------
+     */
+
+    const viewport =
+        svg.append("g");
+
+
+    /*
+     * ----------------------------------------------
+     * Zoom and pan
+     * ----------------------------------------------
+     */
+
+    const zoom =
+        d3.zoom()
+
+            .scaleExtent([
+                0.25,
+                5
+            ])
+
+            .on(
+                "zoom",
+                event => {
+
+                    viewport.attr(
+                        "transform",
+                        event.transform
+                    );
+
+                }
+            );
+
+
+    svg.call(zoom);
+
+
+    /*
+     * ----------------------------------------------
+     * D3 Force Simulation
+     * ----------------------------------------------
+     *
+     * Since our nodes currently have fx/fy values,
+     * they remain pinned at their default locations.
+     *
+     * If a node is double-clicked, fx/fy are removed
+     * and the forces take over.
+     * ----------------------------------------------
+     */
+
+    const simulation =
+        d3.forceSimulation(data.nodes)
+
+            .force(
+                "link",
+
+                d3.forceLink(data.links)
+                    .id(d => d.id)
+                    .distance(150)
+                    .strength(0.7)
+            )
+
+            .force(
+                "charge",
+
+                d3.forceManyBody()
+                    .strength(-700)
+            )
+
+            .force(
+                "center",
+
+                d3.forceCenter(
+                    width / 2,
+                    height / 2
+                )
+            )
+
+            .force(
+                "collision",
+
+                d3.forceCollide()
+                    .radius(45)
+            );
+
+
+    /*
+     * ----------------------------------------------
+     * Link outlines
+     * ----------------------------------------------
+     */
+
+    const linkOutline =
+        viewport
+            .append("g")
+
+            .selectAll("line")
+
+            .data(data.links)
+
+            .join("line")
+
+            .attr(
+                "class",
+                "link-outline"
+            );
+
+
+    /*
+     * ----------------------------------------------
+     * Actual colored links
+     * ----------------------------------------------
+     */
+
+    const links =
+        viewport
+            .append("g")
+
+            .selectAll("line")
+
+            .data(data.links)
+
+            .join("line")
+
+            .attr(
+                "class",
+                d =>
+                    d.shortest
+                        ? "link shortest"
+                        : "link"
+            )
+
+            .attr(
+                "stroke",
+                d => d.type.toLowerCase()
+            );
+
+
+    /*
+     * ----------------------------------------------
+     * Edge Labels
+     * ----------------------------------------------
+     *
+     * Example:
+     *
+     *     Blue (11)
+     * ----------------------------------------------
+     */
+
+    const edgeLabels =
+        viewport
+            .append("g")
+
+            .selectAll("text")
+
+            .data(data.links)
+
+            .join("text")
+
+            .attr(
+                "class",
+                "edge-label"
+            )
+
+            .attr(
+                "text-anchor",
+                "middle"
+            )
+
+            .text(
+                d =>
+                    `${d.type} (${d.cost})`
+            );
+
+
+    /*
+     * ----------------------------------------------
+     * Nodes
+     * ----------------------------------------------
+     */
+
+    const node =
+        viewport
+            .append("g")
+
+            .selectAll("g")
+
+            .data(data.nodes)
+
+            .join("g")
+
+            .attr(
+                "class",
+                d => {
+
+                    let classes =
+                        "node";
+
+                    if (d.start) {
+                        classes += " start";
+                    }
+
+                    if (d.goal) {
+                        classes += " goal";
+                    }
+
+                    return classes;
+                }
+            );
+
+
+    /*
+     * Node circles
+     */
+
+    node.append("circle")
+        .attr(
+            "r",
+            24
+        );
+
+
+    /*
+     * Node letters
+     */
+
+    node.append("text")
+        .text(
+            d => d.id
+        );
+
+
+    /*
+     * ----------------------------------------------
+     * Dragging
+     * ----------------------------------------------
+     */
+
+    node.call(
+
+        d3.drag()
+
+            .on(
+                "start",
+                dragStarted
+            )
+
+            .on(
+                "drag",
+                dragged
+            )
+
+            .on(
+                "end",
+                dragEnded
+            )
+    );
+
+
+    /*
+     * User starts dragging a node
+     */
+
+    function dragStarted(event, d) {
+
+        event.sourceEvent.stopPropagation();
+
+
+        if (!event.active) {
+
+            simulation
+                .alphaTarget(0.3)
+                .restart();
+
+        }
+
+
+        /*
+         * Pin node at its current location.
+         */
+
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+
+
+    /*
+     * User moves node
+     */
+
+    function dragged(event, d) {
+
+        d.fx = event.x;
+        d.fy = event.y;
+    }
+
+
+    /*
+     * User releases node
+     */
+
+    function dragEnded(event, d) {
+
+        if (!event.active) {
+
+            simulation
+                .alphaTarget(0);
+
+        }
+
+
+        /*
+         * DO NOT clear fx/fy.
+         *
+         * This means the node stays wherever
+         * the user dropped it.
+         */
+
+    }
+
+
+    /*
+     * ----------------------------------------------
+     * Double-click a node to unpin it
+     * ----------------------------------------------
+     *
+     * It will then become controlled by the
+     * force simulation.
+     * ----------------------------------------------
+     */
+
+    node.on(
+        "dblclick",
+        function(event, d) {
+
+            event.stopPropagation();
+
+
+            d.fx = null;
+            d.fy = null;
+
+
+            simulation
+                .alpha(0.6)
+                .restart();
+
+        }
+    );
+
+
+    /*
+     * ----------------------------------------------
+     * Simulation update
+     * ----------------------------------------------
+     */
+
+    simulation.on(
+        "tick",
+        () => {
+
+
+            /*
+             * Link outlines
+             */
+
+            linkOutline
+
+                .attr(
+                    "x1",
+                    d => d.source.x
+                )
+
+                .attr(
+                    "y1",
+                    d => d.source.y
+                )
+
+                .attr(
+                    "x2",
+                    d => d.target.x
+                )
+
+                .attr(
+                    "y2",
+                    d => d.target.y
+                );
+
+
+            /*
+             * Colored links
+             */
+
+            links
+
+                .attr(
+                    "x1",
+                    d => d.source.x
+                )
+
+                .attr(
+                    "y1",
+                    d => d.source.y
+                )
+
+                .attr(
+                    "x2",
+                    d => d.target.x
+                )
+
+                .attr(
+                    "y2",
+                    d => d.target.y
+                );
+
+
+            /*
+             * Put edge labels halfway between
+             * their two nodes.
+             */
+
+            edgeLabels
+
+                .attr(
+                    "x",
+                    d =>
+                        (
+                            d.source.x +
+                            d.target.x
+                        ) / 2
+                )
+
+                .attr(
+                    "y",
+                    d =>
+                        (
+                            d.source.y +
+                            d.target.y
+                        ) / 2
+                );
+
+
+            /*
+             * Move nodes
+             */
+
+            node.attr(
+                "transform",
+                d =>
+                    `translate(${d.x},${d.y})`
+            );
+
+        }
+    );
+
+}
+
+
+/*
+ * --------------------------------------------------
+ * Start application
+ * --------------------------------------------------
+ */
+
+drawGraph().catch(error => {
+
+    console.error(error);
+
+
+    document.getElementById(
+        "info"
+    ).textContent =
+        error.message;
+
+});
+
+</script>
+
+
+</body>
+
+</html>
