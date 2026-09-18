@@ -1,0 +1,44 @@
+# Start and destination
+START A
+GOAL H
+
+# FROM  TO  COLOR  [optional weight]
+
+A B BLUE
+A C PINK
+A D RED
+A M MAGENTA
+
+B C RED
+B M PURPLE
+B G TEAL
+
+C M GREEN
+
+D M YELLOW
+D F ORANGE
+D E GRAY
+
+# Override TEAL's normal cost with 3
+F M TEAL 3
+
+E F GREEN
+E M ORANGE 9
+E J BROWN
+
+M G BLUE 5
+M I CYAN
+M H BROWN
+M J GRAY 1
+M L RED 9
+M K BLACK
+
+I G PINK
+I H BLACK
+
+G H YELLOW
+
+J L PINK
+L K ORANGE
+J K GREEN
+K H PINK
