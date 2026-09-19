@@ -45,15 +45,10 @@ def graph_data():
     if route:
         for step in route:
 
-            endpoints = tuple(sorted([
-                step["from"].name,
-                step["to"].name
-            ]))
-
             route_key = (
-                endpoints[0],
-                endpoints[1],
-                str(step["type"]),
+                step["from"].name,
+                step["to"].name,
+                step["type"],
                 step["cost"]
             )
 
@@ -62,29 +57,22 @@ def graph_data():
     # -----------------------------------
     # Links
     # -----------------------------------
-
     graph_links = []
     seen = set()
 
     for node in nodes.values():
 
         for path in node.possible_paths:
+
             destination = path["node"]
 
-            endpoints = tuple(sorted([
-                node.name,
-                destination.name
-            ]))
-
             edge_key = (
-                endpoints[0],
-                endpoints[1],
-                str(path["type"]),
+                node.name,
+                destination.name,
+                path["type"],
                 path["cost"]
             )
 
-            # Skip only the reverse copy of the
-            # exact same edge.
             if edge_key in seen:
                 continue
 
@@ -94,13 +82,11 @@ def graph_data():
                 "source": node.name,
                 "target": destination.name,
 
-                # User-facing path name
                 "type": path["type"].display_name,
-
-                # Actual CSS/D3 color
                 "color": path["type"].color,
 
                 "cost": path["cost"],
+
                 "shortest": edge_key in route_edges
             })
 

@@ -15,7 +15,9 @@ class PathType(Enum):
     TYPE_L = ("NETB", 100, "teal")
     TYPE_M = ("DNS", 51, "magenta")
     TYPE_N = ("CVE", 9999, "magenta")
-
+    TYPE_X = ("Express", 4, "red")      # TEST
+    TYPE_Y = ("Trail", 1, "green")      # TEST
+    TYPE_Z = ("Blue Road", 11, "blue")  # TEST
 
 
     def __init__(self, display_name, cost, color):

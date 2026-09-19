@@ -345,22 +345,15 @@
 
 
         /* ------------------------------------------------
-           Edge labels
+           Edge labels 
         ------------------------------------------------ */
 
         .edge-label {
             font-size: 12px;
             font-weight: 700;
-
             fill: #334155;
-
             pointer-events: none;
-
-            paint-order: stroke;
-
-            stroke: rgba(248, 250, 252, 0.96);
-            stroke-width: 6px;
-            stroke-linejoin: round;
+            stroke: none;
         }
 
 
@@ -424,6 +417,9 @@
             dominant-baseline: central;
         }
 
+        .link-outline {
+            display: none;
+        }
 
         /* ------------------------------------------------
            Footer note
@@ -742,9 +738,92 @@ function linkPath(d) {
     const x2 = d.target.x;
     const y2 = d.target.y;
 
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+
+    const distance = Math.sqrt(
+        dx * dx + dy * dy
+    );
+
+    if (distance === 0) {
+        return "";
+    }
+
     /*
-     * If this is the only connection between
-     * these nodes, draw a straight line.
+     * Perpendicular direction
+     */
+    const perpendicularX = -dy / distance;
+    const perpendicularY = dx / distance;
+
+    /*
+     * Curvature for parallel edges
+     */
+    const curveSpacing = 90;
+
+    /*
+    * Normalize curve direction so reversed connections
+    * do not overlap.
+    *
+    * A -> B and B -> A must use the same reference
+    * direction when calculating their curves.
+    */
+
+    const direction =
+        d.source.id < d.target.id ? 1 : -1;
+
+    const offset =
+        (d.parallelIndex || 0) *
+        curveSpacing *
+        direction;
+
+    /*
+     * Bézier control point
+     */
+    const midX = (x1 + x2) / 2;
+    const midY = (y1 + y2) / 2;
+
+    const controlX =
+        midX +
+        perpendicularX * offset;
+
+    const controlY =
+        midY +
+        perpendicularY * offset;
+
+    /*
+     * Direction of the curve as it approaches
+     * the destination node.
+     */
+    const endDX = x2 - controlX;
+    const endDY = y2 - controlY;
+
+    const endDistance = Math.sqrt(
+        endDX * endDX +
+        endDY * endDY
+    );
+
+    /*
+     * Destination node radius = 25
+     *
+     * Stop slightly before the circle.
+     */
+    const targetPadding = 29;
+
+    const padding = Math.min(
+        targetPadding,
+        endDistance * 0.5
+    );
+
+    const endX =
+        x2 -
+        (endDX / endDistance) * padding;
+
+    const endY =
+        y2 -
+        (endDY / endDistance) * padding;
+
+    /*
+     * Straight path if only one connection
      */
     if (
         !d.parallelCount ||
@@ -753,82 +832,17 @@ function linkPath(d) {
 
         return (
             `M ${x1} ${y1} ` +
-            `L ${x2} ${y2}`
+            `L ${endX} ${endY}`
         );
     }
 
-
     /*
-     * Midpoint between the nodes
+     * Curved path for parallel connections
      */
-    const midX =
-        (x1 + x2) / 2;
-
-    const midY =
-        (y1 + y2) / 2;
-
-
-    /*
-     * Direction between nodes
-     */
-    const dx =
-        x2 - x1;
-
-    const dy =
-        y2 - y1;
-
-    const distance =
-        Math.sqrt(
-            dx * dx +
-            dy * dy
-        );
-
-
-    if (distance === 0) {
-        return "";
-    }
-
-
-    /*
-     * Perpendicular direction
-     */
-    const perpendicularX =
-        -dy / distance;
-
-    const perpendicularY =
-        dx / distance;
-
-
-    /*
-     * How far apart parallel paths should be.
-     *
-     * Increase this if you want more separation.
-     */
-    const curveSpacing = 55;
-
-    const offset =
-        d.parallelIndex *
-        curveSpacing;
-
-
-    /*
-     * Quadratic Bézier control point
-     */
-    const controlX =
-        midX +
-        perpendicularX *
-        offset;
-
-    const controlY =
-        midY +
-        perpendicularY *
-        offset;
-
-
     return (
         `M ${x1} ${y1} ` +
         `Q ${controlX} ${controlY} ` +
-        `${x2} ${y2}`
+        `${endX} ${endY}`
     );
 }
 
@@ -880,10 +894,14 @@ function linkLabelPosition(d) {
 
     const curveSpacing = 55;
 
+    const direction =
+        d.source.id < d.target.id ? 1 : -1;
+
     const offset =
         d.parallelIndex *
         curveSpacing *
-        0.55;
+        0.55 *
+        direction;
 
     return {
         x:
@@ -985,6 +1003,56 @@ async function drawGraph() {
     const viewport =
         svg.append("g");
 
+    /*
+ * ------------------------------------------
+ * Create arrowheads for directional edges
+ * ------------------------------------------
+ */
+const defs = svg.append("defs");
+
+defs.selectAll("marker")
+    .data(data.links)
+    .join("marker")
+
+    .attr(
+        "id",
+        (d, i) => `arrow-${i}`
+    )
+
+    .attr("viewBox", "0 -5 10 10")
+
+    .attr("refX", 10)
+    .attr("refY", 0)
+
+    // Bigger arrowhead for shortest-path edges
+    .attr(
+        "markerWidth",
+        d => d.shortest ? 30 : 15
+    )
+
+    .attr(
+        "markerHeight",
+        d => d.shortest ? 30 : 15
+    )
+
+    .attr(
+        "markerUnits",
+        "userSpaceOnUse"
+    )
+
+    .attr("orient", "auto")
+
+    .append("path")
+
+    .attr(
+        "d",
+        "M 0 -4 L 10 0 L 0 4 Z"
+    )
+
+    .attr(
+        "fill",
+        d => d.color
+    );
 
     /*
      * Zoom / pan
@@ -1093,29 +1161,39 @@ async function drawGraph() {
      */
 
     const links =
-    viewport
-        .append("g")
-        .selectAll("path")
-        .data(data.links)
-        .join("path")
+        viewport
+            .append("g")
 
-        .attr(
-            "fill",
-            "none"
-        )
+            .selectAll("path")
 
-        .attr(
-            "class",
-            d =>
-                d.shortest
-                    ? "link shortest"
-                    : "link"
-        )
+            .data(data.links)
 
+            .join("path")
+
+            .attr(
+                "fill",
+                "none"
+            )
+
+            .attr(
+                "class",
+                d =>
+                    d.shortest
+                        ? "link shortest"
+                        : "link"
+            )
+
+            .attr(
+                "stroke",
+                d => d.color
+            )
+
+        /*
+         * Add arrowhead to destination
+         */
         .attr(
-            "stroke",
-            d =>
-                d.color
+            "marker-end",
+            (d, i) => `url(#arrow-${i})`
         );
 
 

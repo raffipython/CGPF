@@ -6,6 +6,8 @@ A small Python + Flask + D3.js application for visualizing weighted graphs and f
 
 The graph is loaded from a text map file, processed in Python, and displayed as an interactive draggable graph in the browser.
 
+![Dijkstra Pathfinder Graph](examples/Example1_arrow.png)
+
 ## Features
 
 - Dijkstra shortest-path calculation
@@ -74,51 +76,42 @@ This means the connection from `M` to `G` uses the `Blue Road` path type but has
 ## Example map
 
 ```text
-START A
-GOAL H
+START Bob
+GOAL George
 
-A B Blue Road
-A C Side Road
-A D Express Route
-A M Mountain Pass
+Alice Bob SSH
+A C SSH
+A D TELNET
+A M RDP
 
-B C Express Route
-B M Stone Road
-B G Coastal Road
+B C HTTP
+B M HTTP
+B G HTTPS
 
-C M Forest Path
+C M SMTP
 
-D M Trail
-D F Bridge
-D E Railway
+D M KERB
+D F KERB
+D E KERB
 
-M G Blue Road 5
-M I River Path
-M I Express Route
-M H Dirt Road
+M I NETB
+M I NETB
+M H CUSTOM 1337
 
-G H Trail
-I H Railway
+George H SSH
+I H SSH
+Alice M SMTP
 ```
 
-Connections are treated as bidirectional, so:
+Connections are treated as directional, so:
 
 ```text
 A B Blue Road
 ```
 
-creates a path between both `A -> B` and `B -> A`.
+creates a path between both `A -> B`
 
 ## Path types
-
-Path types are configured in `path_type.py`.
-
-Example:
-
-```python
-TYPE_A = ("Blue Road", 11, "blue")
-TYPE_B = ("Express Route", 4, "red")
-```
 
 Each entry contains:
 
@@ -129,14 +122,14 @@ Internal ID, Display Name, Default Weight, Display Color
 For example:
 
 ```python
-TYPE_B = ("Express Route", 4, "red")
+TYPE_B = ("TELNET", 10, "red")
 ```
 
 means:
 
 - Internal Python identifier: `TYPE_B`
-- Map/display name: `Express Route`
-- Default cost: `4`
+- Map/display name: `TELNET`
+- Default cost: `10`
 - Graph color: `red`
 
 Users only need to use the display name in the map file:

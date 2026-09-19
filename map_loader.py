@@ -31,8 +31,14 @@ def get_path_type(name):
 
 
 def connect(node1, node2, path_type, cost=None):
+    """
+    Create a directional connection.
+
+    node1 -> node2
+    """
+
     node1.add_path(node2, path_type, cost)
-    node2.add_path(node1, path_type, cost)
+
 
 def load_map(map_file):
     nodes = {}
@@ -143,18 +149,13 @@ def load_map(map_file):
                 else cost
             )
 
-            endpoint1, endpoint2 = sorted([
-                node1_name,
-                node2_name
-            ])
-
             edge_key = (
-                endpoint1,
-                endpoint2,
+                node1_name,
+                node2_name,
                 path_type,
                 actual_cost
             )
-
+            
             # Exact duplicate/reverse duplicate
             if edge_key in seen_edges:
                 continue

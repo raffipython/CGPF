@@ -1,0 +1,6 @@
+START A
+GOAL B
+
+A B Express
+A B Trail
+B A Blue Road

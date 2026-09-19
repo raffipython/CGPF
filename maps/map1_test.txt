@@ -20,7 +20,7 @@ M I NETB
 M I NETB
 M H CUSTOM 1337
 
-George H SSH
-H George SSH
+George H Trail
+H George Trail
 I H SSH
 Alice M SMTP
